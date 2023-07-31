@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import {onMounted, ref} from 'vue'
 import axios from 'axios'
 import powerSet from './PowerSet'
 // 商品数据
@@ -7,20 +7,23 @@ const goods = ref({})
 const getGoods = async () => {
   // 1135076  初始化就有无库存的规格
   // 1369155859933827074 更新之后有无库存项（蓝色-20cm-中国）
-  const res = await axios.get('http://pcapi-xiaotuxian-front-devtest.itheima.net/goods?id=1369155859933827074')
+  const res = await axios.get('http://pcapi-xiaotuxian-front-devtest.itheima.net/goods?id=1135076')
   goods.value = res.data.result
   const pathMap = getPathMap(goods.value)
-  console.log(pathMap)
+  initDisabledStatus(goods.value.specs, pathMap)
 }
 onMounted(() => getGoods())
 
 // 切换选中状态
 const changeSelectedStatus = (item, val) => {
+  if (val.disabled){
+    return
+  }
   // item: 同一排的对象
   // val：当前点击项
   if (val.selected) {
     val.selected = false
-  }else {
+  } else {
     item.values.forEach(val => val.selected = false)
     val.selected = true
   }
@@ -31,7 +34,7 @@ const changeSelectedStatus = (item, val) => {
 const getPathMap = (goods) => {
   const pathMap = {}
   // 1. 根据sku字段生成有效的sku数组
-  const effectiveSkus = goods.skus.filter(sku => sku.inventory >0)
+  const effectiveSkus = goods.skus.filter(sku => sku.inventory > 0)
   // 2、根据有效的sku使用算法（子集算法） [1,2] => [[1],[2],[1,2]]
   effectiveSkus.forEach(sku => {
     // 2.1 获取匹配的valueName组成的数组
@@ -45,12 +48,25 @@ const getPathMap = (goods) => {
       // 如果已经存在当前key了 就往数组中直接添加skuId 如果不存在key 直接做赋值
       if (pathMap[key]) {
         pathMap[key].push(sku.id)
-      }else {
+      } else {
         pathMap[key] = [sku.id]
       }
     })
   })
   return pathMap
+}
+
+// 初始化禁用状态
+const initDisabledStatus = (specs, pathMap) => {
+  specs.forEach(spec => {
+    spec.values.forEach(val => {
+      if (pathMap[val.name]) {
+        val.disabled = false
+      } else {
+        val.disabled = true
+      }
+    })
+  })
 }
 
 </script>
@@ -62,9 +78,12 @@ const getPathMap = (goods) => {
       <dd>
         <template v-for="val in item.values" :key="val.name">
           <!-- 图片类型规格 -->
-          <img :class="{selected: val.selected }" @click="$event => changeSelectedStatus(item,val)" v-if="val.picture" :src="val.picture" :title="val.name">
+          <img :class="{selected: val.selected,disabled: val.disabled}" @click="$event => changeSelectedStatus(item,val)" v-if="val.picture"
+               :src="val.picture" :title="val.name">
           <!-- 文字类型规格 -->
-          <span :class="{selected: val.selected }" @click="$event => changeSelectedStatus(item,val)" v-else>{{ val.name }}</span>
+          <span :class="{selected: val.selected }" @click="$event => changeSelectedStatus(item,val)" v-else>{{
+              val.name
+            }}</span>
         </template>
       </dd>
     </dl>
@@ -106,14 +125,14 @@ const getPathMap = (goods) => {
       flex: 1;
       color: #666;
 
-      >img {
+      > img {
         width: 50px;
         height: 50px;
         margin-bottom: 4px;
         @include sku-state-mixin;
       }
 
-      >span {
+      > span {
         display: inline-block;
         height: 30px;
         line-height: 28px;
