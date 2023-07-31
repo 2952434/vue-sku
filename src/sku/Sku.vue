@@ -4,19 +4,20 @@ import axios from 'axios'
 import powerSet from './PowerSet'
 // 商品数据
 const goods = ref({})
+let pathMap = {}
 const getGoods = async () => {
   // 1135076  初始化就有无库存的规格
   // 1369155859933827074 更新之后有无库存项（蓝色-20cm-中国）
-  const res = await axios.get('http://pcapi-xiaotuxian-front-devtest.itheima.net/goods?id=1135076')
+  const res = await axios.get('http://pcapi-xiaotuxian-front-devtest.itheima.net/goods?id=1369155859933827074')
   goods.value = res.data.result
-  const pathMap = getPathMap(goods.value)
+  pathMap = getPathMap(goods.value)
   initDisabledStatus(goods.value.specs, pathMap)
 }
 onMounted(() => getGoods())
 
 // 切换选中状态
 const changeSelectedStatus = (item, val) => {
-  if (val.disabled){
+  if (val.disabled) {
     return
   }
   // item: 同一排的对象
@@ -27,6 +28,7 @@ const changeSelectedStatus = (item, val) => {
     item.values.forEach(val => val.selected = false)
     val.selected = true
   }
+  updateDisabledStatus(goods.value.specs, pathMap)
 
 }
 
@@ -69,6 +71,36 @@ const initDisabledStatus = (specs, pathMap) => {
   })
 }
 
+// 获取选中项的匹配数组
+const getSelectedValues = (specs) => {
+  const arr = []
+  specs.forEach(spec => {
+    // 目标：找到values中selected为true的项，然后把他的name字段添加数组对应的位置
+    const selectedVal = spec.values.find(item => item.selected)
+    arr.push(selectedVal ? selectedVal.name : undefined)
+  })
+  return arr
+}
+
+// 切换时更新禁用状态
+const updateDisabledStatus = (specs, pathMap) => {
+  specs.forEach((spec, index) => {
+    const selectedValues = getSelectedValues(specs)
+    spec.values.forEach(val => {
+      console.log(val)
+      selectedValues[index] = val.name
+      const key = selectedValues.filter(value => value).join('-')
+      console.log(key)
+      if (pathMap[key]) {
+        val.disabled = false
+      } else {
+        val.disabled = true
+      }
+    })
+
+  })
+}
+
 </script>
 
 <template>
@@ -78,10 +110,11 @@ const initDisabledStatus = (specs, pathMap) => {
       <dd>
         <template v-for="val in item.values" :key="val.name">
           <!-- 图片类型规格 -->
-          <img :class="{selected: val.selected,disabled: val.disabled}" @click="$event => changeSelectedStatus(item,val)" v-if="val.picture"
+          <img :class="{selected: val.selected,disabled: val.disabled}"
+               @click="$event => changeSelectedStatus(item,val)" v-if="val.picture"
                :src="val.picture" :title="val.name">
           <!-- 文字类型规格 -->
-          <span :class="{selected: val.selected }" @click="$event => changeSelectedStatus(item,val)" v-else>{{
+          <span :class="{selected: val.selected,disabled: val.disabled}" @click="$event => changeSelectedStatus(item,val)" v-else>{{
               val.name
             }}</span>
         </template>
