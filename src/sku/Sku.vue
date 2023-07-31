@@ -29,7 +29,20 @@ const changeSelectedStatus = (item, val) => {
     val.selected = true
   }
   updateDisabledStatus(goods.value.specs, pathMap)
-
+  // 产出SKU对象数据
+  const index = getSelectedValues(goods.value.specs).findIndex(item => item === undefined)
+  if (index > -1) {
+    console.log('找到了，信息不完整')
+  }else {
+    console.log('没有找到，信息完整，可以产出')
+    // 获取sku对象
+    const key = getSelectedValues(goods.value.specs).join('-')
+    const skuIds = pathMap[key]
+    console.log(skuIds)
+    // 以skuId作为匹配项去goods.value.skus数组中找
+    const skuObj = goods.value.skus.find(item => item.id === skuIds[0])
+    console.log('sku对象为',skuObj)
+  }
 }
 
 // 生成有效路径字典
