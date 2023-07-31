@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import axios from 'axios'
+import powerSet from './PowerSet'
 // 商品数据
 const goods = ref({})
 const getGoods = async () => {
@@ -8,6 +9,8 @@ const getGoods = async () => {
   // 1369155859933827074 更新之后有无库存项（蓝色-20cm-中国）
   const res = await axios.get('http://pcapi-xiaotuxian-front-devtest.itheima.net/goods?id=1369155859933827074')
   goods.value = res.data.result
+  const pathMap = getPathMap(goods.value)
+  console.log(pathMap)
 }
 onMounted(() => getGoods())
 
@@ -22,6 +25,32 @@ const changeSelectedStatus = (item, val) => {
     val.selected = true
   }
 
+}
+
+// 生成有效路径字典
+const getPathMap = (goods) => {
+  const pathMap = {}
+  // 1. 根据sku字段生成有效的sku数组
+  const effectiveSkus = goods.skus.filter(sku => sku.inventory >0)
+  // 2、根据有效的sku使用算法（子集算法） [1,2] => [[1],[2],[1,2]]
+  effectiveSkus.forEach(sku => {
+    // 2.1 获取匹配的valueName组成的数组
+    const selectedValArr = sku.specs.map(val => val.valueName)
+    // 2.2 使用算法获取子集
+    const valueArrPowerSet = powerSet(selectedValArr)
+    // 3. 把得到子集生成最终的路径字典对象
+    valueArrPowerSet.forEach(arr => {
+      // 初始化key 数组join -> 字符串 对象的key
+      const key = arr.join('-')
+      // 如果已经存在当前key了 就往数组中直接添加skuId 如果不存在key 直接做赋值
+      if (pathMap[key]) {
+        pathMap[key].push(sku.id)
+      }else {
+        pathMap[key] = [sku.id]
+      }
+    })
+  })
+  return pathMap
 }
 
 </script>
